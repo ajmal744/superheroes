@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,9 +8,7 @@ namespace Superheroes.Controllers
     public class BattleController : Controller
     {
         private readonly ICharactersProvider _charactersProvider;
-        private static CharacterResponse _character1;
-        private static CharacterResponse _character2;
-
+        
         public BattleController(ICharactersProvider charactersProvider)
         {
             _charactersProvider = charactersProvider;
@@ -18,25 +17,29 @@ namespace Superheroes.Controllers
         public async Task<IActionResult> Get(string hero, string villain)
         {
             var characters = await _charactersProvider.GetCharacters();
+
             
-            foreach(var character in characters.Items)
+            var heroCharachter = characters.Items.SingleOrDefault(x => x.Name == hero && x.Type == "hero");
+            var villainCharacter = characters.Items.SingleOrDefault(x => x.Name == villain && x.Type == "villain");
+
+            if (heroCharachter == null && villainCharacter == null)
+                return NotFound();
+
+            if (heroCharachter == null)
+                return BadRequest($"Hero {hero} does not exists.");
+
+            if (villainCharacter == null)
+                return BadRequest($"Villain {villain} does not exists");
+
+            if (heroCharachter.Weakness == villainCharacter.Name)
+                heroCharachter.Score -= 1;
+
+            if(heroCharachter.Score > villainCharacter.Score)
             {
-                if(character.Name == hero)
-                {
-                    _character1 = character;
-                }
-                if(character.Name == villain)
-                {
-                    _character2 = character;
-                }
+                return Ok(heroCharachter);
             }
 
-            if(_character1.Score > _character2.Score)
-            {
-                return Ok(_character1);
-            }
-
-            return Ok(_character2);
+            return Ok(villainCharacter);
         }
     }
 }
